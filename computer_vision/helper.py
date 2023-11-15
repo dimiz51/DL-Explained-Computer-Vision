@@ -1,10 +1,12 @@
 import json
 import os
+from typing import *
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import math
 import time
+import numpy as np
 
 """ This module contains generic helper functions that
     can easily be reused across the Computer Vision section.
@@ -22,37 +24,93 @@ def visualize_calculate_grid_shape(num_images: int) -> tuple:
 # Visualize a number of image samples from a tensorflow dataset
 def visualize_classification_image_samples(dataset: tf.data.Dataset, 
                             num_samples: int, 
-                            dataset_info: tfds.core.dataset_info.DatasetInfo):
+                            dataset_info: tfds.core.dataset_info.DatasetInfo,
+                            g_shape:  Optional[Tuple[int, int]] = None):
     # Create an iterator for the dataset
     iterator = iter(dataset.take(num_samples))
-    grid_shape = visualize_calculate_grid_shape(num_images= num_samples)
+    if g_shape:
+        grid_shape = g_shape
+    else:
+        grid_shape = visualize_calculate_grid_shape(num_images= num_samples)
     class_dict =  {index: name for index, name in enumerate(dataset_info.features['label'].names)}
 
-    # Create a subplot for displaying images in the grid
-    fig, axes = plt.subplots(*grid_shape, figsize=(7, 7))
+    # Verify and plot grid
+    row_grid, col_grid = grid_shape
 
-    for i in range(num_samples):
-        image, label = next(iterator)  
-        image = (image).numpy().astype(int)  
-        label = (label).numpy().astype(int)
+    if row_grid * col_grid == num_samples and num_samples > 7 and row_grid !=1 and col_grid !=1:
+        # Create a subplot for displaying images in the grid
+        fig, axes = plt.subplots(*grid_shape, figsize=(7, 7))
 
-        # Define the position of the current subplot in the grid
-        row, col = divmod(i, grid_shape[1])
+        for i in range(num_samples):
+            image, label = next(iterator)  
+            image = (image).numpy().astype(int)  
+            label = (label).numpy().astype(int)
 
-        # Display the image in the current subplot
-        axes[row, col].imshow(image, cmap='gray')  # Use grayscale colormap
-        axes[row,col].set_title(f'Sample: {i}', fontsize=8, color = 'white')
-        axes[row, col].axis('off')
-        axes[row, col].set_xticks([])  
-        axes[row, col].set_yticks([])  
-        axes[row, col].text(0.5, +40,f'Class: {class_dict[label]}', fontsize=8, color='white')
+            # Define the position of the current subplot in the grid
+            row, col = divmod(i, grid_shape[1])
 
-    fig.tight_layout()
-    fig.suptitle(f"{dataset_info.name} dataset samples", color = 'white')
-    fig.patch.set_alpha(0)
+            # Display the image in the current subplot
+            axes[row, col].imshow(image, cmap='gray')
+            axes[row, col].set_title(f'Sample: {i}', fontsize=8, color='white')
+            axes[row, col].axis('off')
+            axes[row, col].set_xticks([])  
+            axes[row, col].set_yticks([])  
+            axes[row, col].text(0.5,+40, f'Class: {class_dict[label]}', fontsize=8, color='white')
+            axes[row, col].set_aspect('equal')
+        
+        fig.suptitle(f"{dataset_info.name} dataset samples", color='white', y = 0.98)
+        fig.tight_layout()
+        fig.patch.set_alpha(0)
 
-    plt.subplots_adjust(wspace=0.5, hspace=0)
-    plt.show()
+        plt.show()
+    else:
+        print(f"Can't calculate grid shape..Please provide a shape or different number of samples..")
+
+# Visualize a number of predictions for a model
+def visualize_predictions(images: np.ndarray, 
+                          true_labels: list, 
+                          predictions: np.ndarray, 
+                          dataset_info: tfds.core.dataset_info.DatasetInfo, 
+                          num_samples: int,
+                          g_shape:  Optional[Tuple[int, int]] = None):
+    class_names = dataset_info.features['label'].names
+    if g_shape:
+        grid_shape = g_shape
+    else:
+        grid_shape = visualize_calculate_grid_shape(num_images= num_samples)
+
+    # Verify and plot grid
+    row_grid, col_grid = grid_shape
+
+    if row_grid * col_grid == num_samples and num_samples > 7 and row_grid !=1 and col_grid !=1:
+        fig, axes = plt.subplots(*grid_shape, figsize=(7,7))
+
+        for i in range(num_samples):
+            true_label = true_labels[i]
+            predicted_label = np.argmax(predictions[i])
+
+            # Define the position of the current subplot in the grid
+            row, col = divmod(i, grid_shape[1])
+
+            # Display the image in the current subplot
+            axes[row, col].imshow(images[i], cmap='gray')  
+            axes[row, col].axis('off')
+            axes[row, col].set_xticks([])  
+            axes[row, col].set_yticks([])  
+            color = 'green' if true_label == predicted_label else 'red'
+            axes[row, col].set_title(f'True: {class_names[true_label]}\nPredicted: {class_names[predicted_label]}',
+                                      color=color,
+                                      fontsize=10)
+            axes[row, col].set_aspect('equal')
+        
+        fig.suptitle(f"{dataset_info.name} model predictions", color='white', y = 0.98)
+        fig.tight_layout()
+        fig.patch.set_alpha(0)
+
+        plt.subplots_adjust(wspace=0.5, hspace=0)
+        plt.show()
+    else:
+         print(f"Can't calculate grid shape..Please provide a shape or different number of samples..")
 
 # Fast benchmark for input pipelines function
 def fast_benchmark(dataset: tf.data.Dataset, num_epochs: int =2):
