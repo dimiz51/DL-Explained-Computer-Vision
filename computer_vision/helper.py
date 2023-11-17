@@ -142,7 +142,7 @@ def set_model_config(model_name: str, batch_size: int =None, training_epochs: in
     config_template = {
         "cifar_10": {
             "batch_size": 128,
-            "training_epochs": 5,
+            "training_epochs": 30,
             "n_classes": 10,
             "learning_rate": 0.001,
             "optimizer": "adam",

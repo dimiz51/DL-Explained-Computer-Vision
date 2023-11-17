@@ -13,4 +13,4 @@ Things I need to explain:
 9. Explain Pooling,Flatten,Dense,Dropout and Conv2D layers as well as the order of ops
 10. Loss funcs (Role of loss funcs)
 11. Explain metrics for multiclass classification
-
+12. Explain early stopping on validation plateau
