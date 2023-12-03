@@ -59,10 +59,10 @@ def visualize_classification_image_samples(dataset: tf.data.Dataset,
             axes[row, col].set_aspect('equal')
         
         fig.suptitle(f"{dataset_info.name} dataset samples", color='white', y = 0.98)
-        fig.tight_layout()
-        fig.patch.set_alpha(0)
+        # fig.tight_layout()
+        # fig.patch.set_alpha(0)
 
-        plt.show()
+        # plt.show()
     else:
         print(f"Can't calculate grid shape..Please provide a shape or different number of samples..")
 
@@ -104,11 +104,11 @@ def visualize_predictions(images: np.ndarray,
             axes[row, col].set_aspect('equal')
         
         fig.suptitle(f"{dataset_info.name} model predictions", color='white', y = 0.98)
-        fig.tight_layout()
-        fig.patch.set_alpha(0)
-
         plt.subplots_adjust(wspace=0.5, hspace=0)
-        plt.show()
+        # fig.tight_layout()
+        # fig.patch.set_alpha(0)
+
+        # plt.show()
     else:
          print(f"Can't calculate grid shape..Please provide a shape or different number of samples..")
 
@@ -122,7 +122,8 @@ def fast_benchmark(dataset: tf.data.Dataset, num_epochs: int =2):
 
 # Initialize or set the parameters of a model's config dict
 def set_model_config(model_name: str, batch_size: int =None, training_epochs: int=None,
-                     n_classes: int =None, learning_rate: float = None, optimizer: str = None, val_size: float = None):
+                     n_classes: int =None, learning_rate: float = None, optimizer: str = None, 
+                     val_size: float = None, global_clipnorm: int = None):
     """ Helper function that initializes configs for various model's from 
         templates or changes some parameter in a config.
 
@@ -146,9 +147,18 @@ def set_model_config(model_name: str, batch_size: int =None, training_epochs: in
             "n_classes": 10,
             "learning_rate": 0.001,
             "optimizer": "adam",
-            "val_size": 0.2
+            "val_size": 0.2,
+            'global_clipnorm': None,
         },
-        # Add configurations for other models as needed
+        "pascal_yolo": {
+            'batch_size': 128,
+            'learning_rate': 0.001,
+            'training_epochs': 20,
+            'global_clipnorm': 10,
+            'n_classes': None,
+            'optimizer': "adam",
+            'val_size': None
+        }
     }
 
     # Check if the provided model_name is in the template
@@ -162,6 +172,7 @@ def set_model_config(model_name: str, batch_size: int =None, training_epochs: in
         model_config['learning_rate'] = learning_rate if learning_rate is not None else model_config['learning_rate']
         model_config['optimizer'] = optimizer if optimizer is not None else model_config['optimizer']
         model_config['val_size'] = val_size if val_size is not None else model_config['val_size']
+        model_config['global_clipnorm'] = global_clipnorm if global_clipnorm is not None else model_config['global_clipnorm']
 
         return model_config
     else:
@@ -169,32 +180,36 @@ def set_model_config(model_name: str, batch_size: int =None, training_epochs: in
     
 
 # Plot training loss function
-def plot_loss(history):
+def plot_loss(history, model_type: str):
     """
     Plot the training and validation loss over epochs.
 
     Parameters:
         history (tensorflow.python.keras.callbacks.History): The training history obtained from model.fit.
-
+        model_type: Type of the model(object_detection,classification,segmentation etc.)
     Returns:
         None
     """
     # Get the training and validation loss from the history
-    train_loss = history.history['loss']
-    val_loss = history.history['val_loss']
+    if model_type == 'classification':
+        train_loss = history.history['loss']
+        val_loss = history.history['val_loss']
 
-    # Plot the training and validation loss with lines
-    epochs = range(1, len(train_loss) + 1)
-    plt.plot(epochs, train_loss, 'b-', label='Training Loss')  
-    plt.plot(epochs, val_loss, 'r--', label='Validation Loss') 
-    plt.title('Training and Validation Loss')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.grid(True)
+        # Plot the training and validation loss with lines
+        epochs = range(1, len(train_loss) + 1)
+        plt.plot(epochs, train_loss, 'b-', label='Training Loss')  
+        plt.plot(epochs, val_loss, 'r--', label='Validation Loss') 
+        plt.title('Training and Validation Loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.grid(True)
 
-    max_ticks = 5
-    tick_positions = list(range(1, len(train_loss) + 1, max(len(train_loss) // max_ticks, 1)))
-    plt.xticks(tick_positions)
+        max_ticks = 5
+        tick_positions = list(range(1, len(train_loss) + 1, max(len(train_loss) // max_ticks, 1)))
+        plt.xticks(tick_positions)
+    else:
+        print('''Please select a valid type of model to 
+              plot loss.''')
 
-    plt.show()
+    # plt.show()
