@@ -7,6 +7,8 @@ import tensorflow_datasets as tfds
 import math
 import time
 import numpy as np
+from sklearn.metrics import confusion_matrix
+from sklearn.utils.multiclass import unique_labels
 
 """ This module contains generic helper functions that
     can easily be reused across the Computer Vision section.
@@ -59,10 +61,6 @@ def visualize_classification_image_samples(dataset: tf.data.Dataset,
             axes[row, col].set_aspect('equal')
         
         fig.suptitle(f"{dataset_info.name} dataset samples", color='white', y = 0.98)
-        # fig.tight_layout()
-        # fig.patch.set_alpha(0)
-
-        # plt.show()
     else:
         print(f"Can't calculate grid shape..Please provide a shape or different number of samples..")
 
@@ -105,10 +103,6 @@ def visualize_predictions(images: np.ndarray,
         
         fig.suptitle(f"{dataset_info.name} model predictions", color='white', y = 0.98)
         plt.subplots_adjust(wspace=0.5, hspace=0)
-        # fig.tight_layout()
-        # fig.patch.set_alpha(0)
-
-        # plt.show()
     else:
          print(f"Can't calculate grid shape..Please provide a shape or different number of samples..")
 
@@ -212,4 +206,60 @@ def plot_loss(history, model_type: str):
         print('''Please select a valid type of model to 
               plot loss.''')
 
-    # plt.show()
+# Classification confusion matrix plot
+def plot_confusion_matrix(model: tf.keras.Model,
+                          test_dataset, 
+                          class_names: list, 
+                          cmap=plt.cm.Blues):
+    """
+    Plots a confusion matrix for a Keras model on a batched test dataset.
+
+    Parameters:
+    - model: Keras model
+    - test_dataset: Batched test dataset (tf.data.Dataset or similar)
+    - class_names: List of class names
+    - normalize: If True, normalize the confusion matrix
+    - cmap: Color map for the plot
+
+    Returns:
+    - None
+    """
+    y_true = []
+    y_pred = []
+    batches_count = len(test_dataset)
+    iterator = iter(test_dataset)
+
+    # Iterate over batches to get predictions and true labels
+    for i in range(0, batches_count):
+        batch_x, batch_y = next(iterator)
+        y_pred_batch = np.argmax(model.predict(batch_x, verbose=0), axis=1)
+
+        y_true.extend(batch_y.numpy())
+        y_pred.extend(y_pred_batch)
+
+    # Compute confusion matrix
+    cm = confusion_matrix(y_true, y_pred)
+
+    # Get unique class labels
+    classes = unique_labels(y_true, y_pred)
+
+    # Plot the confusion matrix
+    plt.figure(figsize=(len(class_names), len(class_names)))
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title('Confusion Matrix')
+    plt.colorbar()
+
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, class_names, rotation=45)
+    plt.yticks(tick_marks, class_names)
+
+    fmt = 'd'
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            plt.text(j, i, format(cm[i, j], fmt),
+                     ha="center", va="center",
+                     color="white" if cm[i, j] > thresh else "black")
+
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
