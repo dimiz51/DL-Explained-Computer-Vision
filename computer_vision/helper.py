@@ -9,6 +9,8 @@ import time
 import numpy as np
 from sklearn.metrics import confusion_matrix
 from sklearn.utils.multiclass import unique_labels
+from keras_cv import bounding_box
+from keras_cv import visualization
 
 """ This module contains generic helper functions that
     can easily be reused across the Computer Vision section.
@@ -64,8 +66,8 @@ def visualize_classification_image_samples(dataset: tf.data.Dataset,
     else:
         print(f"Can't calculate grid shape..Please provide a shape or different number of samples..")
 
-# Visualize a number of predictions for a model
-def visualize_predictions(images: np.ndarray, 
+# Visualize a number of predictions of a classification model
+def visualize_classification_predictions(images: np.ndarray, 
                           true_labels: list, 
                           predictions: np.ndarray, 
                           dataset_info: tfds.core.dataset_info.DatasetInfo, 
@@ -202,6 +204,37 @@ def plot_loss(history, model_type: str):
         max_ticks = 5
         tick_positions = list(range(1, len(train_loss) + 1, max(len(train_loss) // max_ticks, 1)))
         plt.xticks(tick_positions)
+
+    elif model_type == 'object_detection':
+        regression_loss = history.history['box_loss']
+        regression_val_loss = history.history['val_box_loss']
+        classification_loss = history.history['class_loss']
+        classification_val_loss = history.history['val_class_loss']
+
+        epochs = range(1,len(regression_loss) + 1)
+        # Create a 1x2 subplot grid
+        fig, axs = plt.subplots(1, 2, figsize=(12, 6))
+
+        # Bounding Boxes loss
+        axs[0].plot(epochs, regression_loss, label='Training Regression Loss')
+        axs[0].plot(epochs, regression_val_loss, label='Validation Regression Loss')
+        axs[0].set_title('Regression Loss')
+        axs[0].set_xlabel('Epochs')
+        axs[0].set_ylabel('Loss')
+        axs[0].legend()
+
+        # Class loss
+        axs[1].plot(epochs, classification_loss, label='Training Classification Loss')
+        axs[1].plot(epochs, classification_val_loss, label='Validation Classification Loss')
+        axs[1].set_title('Classification Loss')
+        axs[1].set_xlabel('Epochs')
+        axs[1].set_ylabel('Loss')
+        axs[1].legend()
+
+        # Adjust x-axis ticks
+        max_ticks = 5
+        tick_positions = list(range(1, len(regression_loss) + 1, max(len(regression_loss) // max_ticks, 1)))
+        plt.xticks(tick_positions)
     else:
         print('''Please select a valid type of model to 
               plot loss.''')
@@ -263,3 +296,35 @@ def plot_confusion_matrix(model: tf.keras.Model,
 
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
+
+
+# Visualize object detection predictions from a Keras CV model
+def visualize_object_predictions(model: tf.keras.Model, 
+                                 dataset, 
+                                 bounding_box_format: str, 
+                                 class_mapping: dict):
+    ''' 
+    Visualize object detection predictions from a Keras CV model
+
+    Parameters:
+        - model: Keras model
+        - dataset: Batched test dataset (tf.data.Dataset or similar)
+        - bounding_box_format: Format of bounding boxes
+        - class_mapping: Index/Class mapping dictionary
+    '''
+    images, y_true = next(iter(dataset.take(1)))
+    y_pred = model.predict(images, verbose=0)
+    y_pred = bounding_box.to_ragged(y_pred)
+    visualization.plot_bounding_box_gallery(
+        images,
+        value_range=(0, 255),
+        bounding_box_format=bounding_box_format,
+        y_true=y_true,
+        y_pred=y_pred,
+        scale=4,
+        rows=2,
+        cols=2,
+        show=True,
+        font_scale=0.7,
+        class_mapping=class_mapping,
+    )
