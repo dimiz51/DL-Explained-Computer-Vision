@@ -11,6 +11,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.utils.multiclass import unique_labels
 from keras_cv import bounding_box
 from keras_cv import visualization
+from sklearn.utils.class_weight import compute_class_weight
 
 """ This module contains generic helper functions that
     can easily be reused across the Computer Vision section.
@@ -24,6 +25,29 @@ def visualize_calculate_grid_shape(num_images: int) -> tuple:
     num_rows = math.isqrt(num_images)
     num_cols = math.ceil(num_images / num_rows)
     return (num_rows, num_cols)
+
+# Visualize a number of image samples from a tensorflow segmentation dataset
+def visualize_segmentation_image_samples(dataset, num_samples=3):
+    sample_dataset = dataset.take(num_samples)
+
+    # Create a subplot for displaying images in the grid
+    fig, axes = plt.subplots(num_samples, 2, figsize=(10, 5 * num_samples))
+
+    # Iterate through the samples dataset
+    for i, batch in enumerate(sample_dataset):
+        image = batch['image'].numpy().astype(int)
+        label = batch['label'].numpy().astype(int)
+        segmentation_mask = batch['segmentation_mask'].numpy().astype(int)
+
+        # Plot original image
+        axes[i, 0].imshow(image)
+        axes[i, 0].set_title(f'Original Image - Sample {i + 1}')
+        axes[i, 0].axis('off')
+
+        # Plot segmentation mask
+        axes[i, 1].imshow(segmentation_mask[:, :, 0], cmap='gray')
+        axes[i, 1].set_title(f'Segmentation Mask - Sample {i + 1}')
+        axes[i, 1].axis('off')
 
 # Visualize a number of image samples from a tensorflow dataset
 def visualize_classification_image_samples(dataset: tf.data.Dataset, 
@@ -187,7 +211,7 @@ def plot_loss(history, model_type: str):
         None
     """
     # Get the training and validation loss from the history
-    if model_type == 'classification':
+    if model_type in ['classification', 'segmentation']:
         train_loss = history.history['loss']
         val_loss = history.history['val_loss']
 
@@ -328,3 +352,90 @@ def visualize_object_predictions(model: tf.keras.Model,
         font_scale=0.7,
         class_mapping=class_mapping,
     )
+
+
+def visualize_segmentation_predictions(dataset: tf.data.Dataset, 
+                                       model: tf.keras.Model, 
+                                       num_samples:int = 3, 
+                                       threshold: float = 0.5):
+    """ 
+    Visualize original image, mask and predicted segmentation masks from a batched dataset
+
+    Parameters:
+       - model: Keras model
+       - dataset: Batched test dataset (tf.data.Dataset or similar)
+       - num_samples: Number of samples to visualize (range: (1,batch_size))
+       - threshold: Value to threshold the predicted masks (range: (0,1))
+    """
+    samples = dataset.take(1)
+
+    for images, masks in samples:
+        for x in range(0, num_samples):
+            image_np = images[x].numpy()
+            original_mask = masks[x].numpy()
+
+            # Add an extra dimension to match the input shape expected by the model
+            image_np = np.expand_dims(image_np, axis=0)
+
+            # Predict the mask using the trained model
+            predicted_mask = model.predict(image_np, verbose = 0)
+
+            # Threshold the predicted mask (assuming binary segmentation)
+            predicted_mask[predicted_mask >= threshold] = 1
+            predicted_mask[predicted_mask < threshold] = 0
+
+            # Plot the original image, original mask, and predicted mask
+            plt.figure(figsize=(12, 5))
+
+            # Original Image
+            plt.subplot(1, 3, 1)
+            plt.imshow(np.squeeze(image_np[0]))
+            plt.title('Original Image')
+            plt.axis('off')
+
+            # Original Mask
+            plt.subplot(1, 3, 2)
+            plt.imshow(original_mask[:, :, 0], cmap='gray')
+            plt.title('Original Mask')
+            plt.axis('off')
+
+            # Predicted Mask
+            plt.subplot(1, 3, 3)
+            plt.imshow(predicted_mask[0, :, :, 0], cmap='gray')
+            plt.title('Predicted Mask')
+            plt.axis('off')
+
+# Calculate class weights across dataset function
+def calculate_average_class_weights(dataset):
+    # Function to calculate class weights per batch
+    def calculate_class_weights(labels):
+        # Flatten the labels and convert them to a NumPy array
+        flat_labels = np.concatenate([label.numpy().flatten() for label in labels])
+
+        # Calculate class weights using compute_class_weight
+        classes = np.unique(flat_labels)
+        weights = compute_class_weight(class_weight='balanced', classes=classes, y=flat_labels)
+
+        # Create a dictionary mapping class indices to weights
+        class_weight_dict = dict(zip(classes, weights))
+
+        return class_weight_dict
+
+    # Take the training dataset
+    iterator = iter(dataset)
+
+    batch_weights = {0: [], 1: []}
+
+    for i in range(len(dataset)):
+        _, labels_batch = next(iterator)
+
+        class_weights = calculate_class_weights(labels_batch)
+
+        for key in batch_weights.keys():
+            batch_weights[key].append(class_weights.get(key, 0))
+
+    # Calculate average weights across the dataset
+    for key in batch_weights.keys():
+        batch_weights[key] = sum(batch_weights[key]) / len(batch_weights[key])
+
+    return batch_weights
