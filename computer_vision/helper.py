@@ -231,7 +231,16 @@ def set_model_config(model_name: str, batch_size: int =None, training_epochs: in
             'global_clipnorm': 10,
             'n_classes': None,
             'optimizer': "adam",
-            'val_size': None
+            'val_size': 0.2
+        },
+        "oxford_unet":{
+            'batch_size': 8,
+            'learning_rate': 0.001,
+            'training_epochs': 50,
+            'global_clipnorm': None,
+            'n_classes': 2,
+            'optimizer': "adam",
+            'val_size': 0.2
         }
     }
 
@@ -251,7 +260,6 @@ def set_model_config(model_name: str, batch_size: int =None, training_epochs: in
         return model_config
     else:
         raise ValueError(f"Configuration not found for model: {model_name}")
-    
 
 # Plot training loss function
 def plot_loss(history, model_type: str):
