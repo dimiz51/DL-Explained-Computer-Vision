@@ -26,6 +26,22 @@ def visualize_calculate_grid_shape(num_images: int) -> tuple:
     num_cols = math.ceil(num_images / num_rows)
     return (num_rows, num_cols)
 
+# Visualize the Keras-CV compatible dataset
+def visualize_object_detection_samples(inputs, value_range, rows, cols, bounding_box_format, class_mapping):
+    inputs = next(iter(inputs.take(1)))
+    images, bounding_boxes = inputs["images"], inputs["bounding_boxes"]
+    visualization.plot_bounding_box_gallery(
+        images,
+        value_range=value_range,
+        rows=rows,
+        cols=cols,
+        y_true=bounding_boxes,
+        scale=5,
+        font_scale=0.7,
+        bounding_box_format=bounding_box_format,
+        class_mapping=class_mapping,
+    )
+    
 # Visualize a number of image samples from a tensorflow segmentation dataset
 def visualize_segmentation_image_samples(dataset, num_samples=3):
     sample_dataset = dataset.take(num_samples)
@@ -267,7 +283,8 @@ def plot_loss(history, model_type: str):
 def plot_confusion_matrix(model: tf.keras.Model,
                           test_dataset, 
                           class_names: list, 
-                          cmap=plt.cm.Blues):
+                          cmap=plt.cm.Blues,
+                          object_detection: bool = False):
     """
     Plots a confusion matrix for a Keras model on a batched test dataset.
 
@@ -289,9 +306,12 @@ def plot_confusion_matrix(model: tf.keras.Model,
     # Iterate over batches to get predictions and true labels
     for i in range(0, batches_count):
         batch_x, batch_y = next(iterator)
-        y_pred_batch = np.argmax(model.predict(batch_x, verbose=0), axis=1)
-
-        y_true.extend(batch_y.numpy())
+        if object_detection:
+            predictions = model.predict(batch_x, verbose=0)
+            y_pred_batch = predictions['classes']
+        else:
+            y_pred_batch = np.argmax(model.predict(batch_x, verbose=0), axis=1)
+        y_true.extend(batch_y['classes'].numpy())
         y_pred.extend(y_pred_batch)
 
     # Compute confusion matrix
