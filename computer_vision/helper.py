@@ -22,12 +22,30 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Calculate optimal grid shape for the samples visualization figure
 def visualize_calculate_grid_shape(num_images: int) -> tuple:
+    """ Calculate the grid shape for a given number of detections
+    Parameters:
+        -num_images: Number of predictions to visualize.
+    """
     num_rows = math.isqrt(num_images)
     num_cols = math.ceil(num_images / num_rows)
     return (num_rows, num_cols)
 
 # Visualize the Keras-CV compatible dataset
-def visualize_object_detection_samples(inputs, value_range, rows, cols, bounding_box_format, class_mapping):
+def visualize_object_detection_samples(inputs, 
+                                       value_range:tuple, 
+                                       rows: int, 
+                                       cols: int, 
+                                       bounding_box_format: str, 
+                                       class_mapping: dict):
+    """Function to visualize some samples from the object detection tf.data.Dataset
+    Parameters:
+        -inputs: Input dataset to visualize
+        -value_range: Range of image values as tuple e.g.(0,255)
+        -rows: Grid rows
+        -cols: Grid columns
+        -bounding_box_format: Sting representing the chosen format for the bounding boxes
+        -class_mapping: Dictionary containing the mapping between indexes and classes    
+    """
     inputs = next(iter(inputs.take(1)))
     images, bounding_boxes = inputs["images"], inputs["bounding_boxes"]
     visualization.plot_bounding_box_gallery(
@@ -44,6 +62,11 @@ def visualize_object_detection_samples(inputs, value_range, rows, cols, bounding
     
 # Visualize a number of image samples from a tensorflow segmentation dataset
 def visualize_segmentation_image_samples(dataset, num_samples=3):
+    """Function to visualize some samples from a segmentation tf.data.Dataset
+    Parameters:
+        -dataset: The dataset to use for visualization (not batched)
+        -num_samples: Number of samples to visualize   
+    """
     sample_dataset = dataset.take(num_samples)
 
     # Create a subplot for displaying images in the grid
@@ -70,6 +93,7 @@ def visualize_classification_image_samples(dataset: tf.data.Dataset,
                             num_samples: int, 
                             dataset_info: tfds.core.dataset_info.DatasetInfo,
                             g_shape:  Optional[Tuple[int, int]] = None):
+    
     # Create an iterator for the dataset
     iterator = iter(dataset.take(num_samples))
     if g_shape:
@@ -108,11 +132,20 @@ def visualize_classification_image_samples(dataset: tf.data.Dataset,
 
 # Visualize a number of predictions of a classification model
 def visualize_classification_predictions(images: np.ndarray, 
-                          true_labels: list, 
-                          predictions: np.ndarray, 
-                          dataset_info: tfds.core.dataset_info.DatasetInfo, 
-                          num_samples: int,
-                          g_shape:  Optional[Tuple[int, int]] = None):
+                                         true_labels: list, 
+                                         predictions: np.ndarray, 
+                                         dataset_info: tfds.core.dataset_info.DatasetInfo, 
+                                         num_samples: int,
+                                         g_shape:  Optional[Tuple[int, int]] = None):
+    """Function to visualize the classification predictions
+    Parameters:
+        -images: Images to visualize as np.arrays 
+        -true_labels: Ground truth labels list
+        -predictions: Raw predictions array
+        -dataset_info: A ds_info object for the tf.data.Dataset
+        -num_samples: Number of samples to visualize
+        -g_shape: Plot grid shape
+    """
     class_names = dataset_info.features['label'].names
     if g_shape:
         grid_shape = g_shape
@@ -150,6 +183,11 @@ def visualize_classification_predictions(images: np.ndarray,
 
 # Fast benchmark for input pipelines function
 def fast_benchmark(dataset: tf.data.Dataset, num_epochs: int =2):
+    """Fast benchmark a tf.data.Dataset to test a data
+    pipeline
+    Parameters:
+        -dataset: The dataset to benchmark
+        -num_epochs: Number of epochs to use for benchmarking"""
     start_time = time.perf_counter()
     for _ in tf.data.Dataset.range(num_epochs):
         for _ in dataset:
@@ -306,7 +344,7 @@ def plot_confusion_matrix(model: tf.keras.Model,
     for i in range(0, batches_count):
         batch_x, batch_y = next(iterator)
         y_pred_batch = np.argmax(model.predict(batch_x, verbose=0), axis=1)
-        y_true.extend(batch_y['classes'].numpy())
+        y_true.extend(batch_y.numpy())
         y_pred.extend(y_pred_batch)
 
     # Compute confusion matrix
@@ -423,6 +461,14 @@ def visualize_segmentation_predictions(dataset: tf.data.Dataset,
 
 # Calculate class weights across dataset function
 def calculate_average_class_weights(dataset):
+    """Helper function to calculate class weights. This
+    could be useful to use when we have an imbalanced dataset.
+    
+    Parameters:
+        - dataset: Batched test dataset (tf.data.Dataset or similar)
+    Returns:
+        - batch_weights: Averaged weights across all batches for all the classes.
+    """
     # Function to calculate class weights per batch
     def calculate_class_weights(labels):
         # Flatten the labels and convert them to a NumPy array
