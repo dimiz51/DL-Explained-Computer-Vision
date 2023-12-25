@@ -283,8 +283,7 @@ def plot_loss(history, model_type: str):
 def plot_confusion_matrix(model: tf.keras.Model,
                           test_dataset, 
                           class_names: list, 
-                          cmap=plt.cm.Blues,
-                          object_detection: bool = False):
+                          cmap=plt.cm.Blues):
     """
     Plots a confusion matrix for a Keras model on a batched test dataset.
 
@@ -306,11 +305,7 @@ def plot_confusion_matrix(model: tf.keras.Model,
     # Iterate over batches to get predictions and true labels
     for i in range(0, batches_count):
         batch_x, batch_y = next(iterator)
-        if object_detection:
-            predictions = model.predict(batch_x, verbose=0)
-            y_pred_batch = predictions['classes']
-        else:
-            y_pred_batch = np.argmax(model.predict(batch_x, verbose=0), axis=1)
+        y_pred_batch = np.argmax(model.predict(batch_x, verbose=0), axis=1)
         y_true.extend(batch_y['classes'].numpy())
         y_pred.extend(y_pred_batch)
 
@@ -371,6 +366,7 @@ def visualize_object_predictions(model: tf.keras.Model,
         show=True,
         font_scale=0.7,
         class_mapping=class_mapping,
+        legend = True
     )
 
 
