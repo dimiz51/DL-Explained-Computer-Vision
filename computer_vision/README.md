@@ -14,3 +14,5 @@ Things I need to explain:
 10. Loss funcs (Role of loss funcs)
 11. Explain metrics for multiclass classification
 12. Explain early stopping on validation plateau
+
+### Object Detection example notes
